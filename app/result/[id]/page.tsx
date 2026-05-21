@@ -9,7 +9,9 @@ import { useLanguage } from '@/lib/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { celebrities } from '@/lib/data/celebrities';
 import { calculateCompatibility, parseArchetypeCode } from '@/lib/utils/compatibility';
+import { signatureTraits } from '@/lib/data/signatureTraits';
 import html2canvas from 'html2canvas';
+import confetti from 'canvas-confetti';
 
 export default function ResultPage() {
   const params = useParams();
@@ -39,6 +41,15 @@ export default function ResultPage() {
         archetypeCode: data.archetypeCode,
         archetype
       });
+
+      // Trigger confetti celebration
+      setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }, 300);
     }
   }, []);
 
@@ -57,8 +68,6 @@ export default function ResultPage() {
       return;
     }
 
-    // For compatibility, we need to reconstruct dimension scores from the archetype code
-    // This is a simplified version - in production you'd want to store full results
     const compatibility = calculateCompatibility(result.dimensions, result.dimensions);
     setCompatibilityResult({
       ...compatibility,
@@ -76,9 +85,10 @@ export default function ResultPage() {
         backgroundColor: '#ffffff',
         scale: 2,
         logging: false,
+        useCORS: true,
+        allowTaint: true,
       });
 
-      // Convert to blob and download
       canvas.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
@@ -89,9 +99,10 @@ export default function ResultPage() {
           URL.revokeObjectURL(url);
         }
         setIsGeneratingImage(false);
-      });
+      }, 'image/png');
     } catch (error) {
       console.error('Error generating image:', error);
+      alert(language === 'zh' ? '图片生成失败，请重试' : 'Failed to generate image, please try again');
       setIsGeneratingImage(false);
     }
   };
@@ -115,6 +126,7 @@ export default function ResultPage() {
 
   const { archetype, dimensions: dimensionScores } = result;
   const matchingCelebrities = celebrities[archetype.fullCode] || [];
+  const signature = signatureTraits[archetype.fullCode];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-gray-800">
@@ -124,18 +136,36 @@ export default function ResultPage() {
 
       <div className="container mx-auto px-4 py-16 max-w-4xl">
         {/* Result Card - for image generation */}
-        <div ref={resultCardRef} className="bg-white dark:bg-gray-800 p-8 rounded-lg mb-8">
-          {/* Archetype Header */}
+        <div ref={resultCardRef} className="bg-white dark:bg-gray-800 p-8 rounded-lg mb-8 shadow-xl">
+          {/* Archetype Header with Signature Traits */}
           <div className="text-center mb-12">
+            <div className="text-6xl mb-4">{signature?.emoji}</div>
             <div className="inline-block bg-blue-600 text-white px-6 py-2 rounded-full text-lg font-semibold mb-4">
               {archetype.fullCode}
             </div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
               {archetype.name[language]}
             </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            <h2 className="text-2xl font-semibold text-blue-600 dark:text-blue-400 mb-4">
+              {signature?.tagline[language]}
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-6">
               {archetype.description[language]}
             </p>
+
+            {/* Signature Traits Tags */}
+            {signature && (
+              <div className="flex flex-wrap gap-3 justify-center">
+                {signature.traits[language].map((trait, index) => (
+                  <span
+                    key={index}
+                    className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-md"
+                  >
+                    {trait}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Celebrity Matches */}
